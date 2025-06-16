@@ -28,7 +28,7 @@ if not st.session_state.mission:
     mission_choice = st.radio("미션 선택:", list(missions.keys()))
     if st.button("미션 시작하기"):
         st.session_state.mission = mission_choice
-        st.experimental_rerun()
+        st.rerun()
 else:
     st.subheader(f"🎯 미션: {st.session_state.mission}")
     st.caption(missions[st.session_state.mission])
