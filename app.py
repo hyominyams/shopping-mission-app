@@ -1,22 +1,22 @@
 import streamlit as st
 
-# --------------------------
-# 기본 설정
-# --------------------------
-st.set_page_config(page_title="합리적 소비 미션", page_icon="🛍️", layout="wide")
-st.title("🛒 합리적 소비 장보기 미션")
+# 페이지 설정
+st.set_page_config(page_title="합리적 소비 미션", layout="wide")
 
-# 초기 세션 상태
+st.title("🛍️ 합리적 소비 장보기 미션")
+
+# 예산 설정
+BUDGET = 30000
+
+# 세션 초기화
 if "mission" not in st.session_state:
     st.session_state.mission = None
 if "cart" not in st.session_state:
-    st.session_state.cart = []
+    st.session_state.cart = {}
+if "quantities" not in st.session_state:
+    st.session_state.quantities = {}
 
-BUDGET = 30000  # 예산
-
-# --------------------------
 # 미션 선택
-# --------------------------
 missions = {
     "카레라이스 만들기 🍛": "카레에 필요한 재료를 선택해보세요!",
     "해외여행 준비 ✈️": "여행 가기 전 필요한 물건을 준비하세요!",
@@ -33,72 +33,103 @@ else:
     st.subheader(f"🎯 미션: {st.session_state.mission}")
     st.caption(missions[st.session_state.mission])
 
-    # --------------------------
     # 상품 목록
-    # --------------------------
-    st.subheader("2️⃣ 상품을 선택해 장바구니에 담으세요")
-
     products = [
-        {"name": "양파 (1개)", "price": 500, "emoji": "🧅"},
-        {"name": "양파 (3개)", "price": 1200, "emoji": "🧅"},
-        {"name": "당근 (1개)", "price": 600, "emoji": "🥕"},
-        {"name": "감자 (2개)", "price": 1100, "emoji": "🥔"},
-        {"name": "고기 (팩)", "price": 5000, "emoji": "🥩"},
-        {"name": "카레가루", "price": 2000, "emoji": "🍛"},
-        {"name": "여권 케이스", "price": 3000, "emoji": "📘"},
-        {"name": "칫솔", "price": 1000, "emoji": "🪥"},
-        {"name": "여행용 가방", "price": 15000, "emoji": "🧳"},
-        {"name": "물티슈", "price": 1000, "emoji": "🧻"},
-        {"name": "김밥", "price": 2500, "emoji": "🍙"},
-        {"name": "과일 도시락", "price": 4000, "emoji": "🍓"},
-        {"name": "물", "price": 800, "emoji": "🥤"},
-        {"name": "샌드위치", "price": 3000, "emoji": "🥪"},
-        {"name": "모자", "price": 7000, "emoji": "🧢"},
-        {"name": "선크림", "price": 5000, "emoji": "🧴"},
-        {"name": "우산", "price": 4000, "emoji": "☔"},
-        {"name": "카메라", "price": 25000, "emoji": "📷"},
-        {"name": "비누", "price": 1200, "emoji": "🧼"},
-        {"name": "세면도구 세트", "price": 4500, "emoji": "🪒"},
-        {"name": "반찬통", "price": 3500, "emoji": "🥡"},
-        {"name": "수저세트", "price": 1000, "emoji": "🥢"},
-        {"name": "냅킨", "price": 700, "emoji": "🧻"},
+        {
+            "id": "onion_1",
+            "name": "양파 (1개)",
+            "price": 500,
+            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
+        },
+        {
+            "id": "onion_3",
+            "name": "양파 (3개)",
+            "price": 1200,
+            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
+        },
+        # 여기에 더 많은 상품 추가 가능
     ]
 
-    cols = st.columns(4)
+    st.subheader("2️⃣ 상품을 골라 담아보세요!")
+    cols = st.columns(3)
+
     for i, item in enumerate(products):
-        with cols[i % 4]:
-            st.markdown(f"{item['emoji']} **{item['name']}**")
-            st.markdown(f"💰 {item['price']}원")
-            if st.button(f"담기 ➕", key=f"add_{i}"):
-                st.session_state.cart.append(item)
+        with cols[i % 3]:
+            with st.container(border=True):
+                st.markdown(f"### {item['name']}")
+                st.image(item["image"], width=100)
+                st.markdown(f"💰 **{item['price']}원**", unsafe_allow_html=True)
 
-    # --------------------------
+                qty = st.session_state.quantities.get(item["id"], 1)
+
+                col1, col2, col3 = st.columns([1, 1, 2])
+                with col1:
+                    if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
+                        st.session_state.quantities[item["id"]] = qty - 1
+                        st.rerun()
+                with col2:
+                    st.markdown(f"**{qty}개**")
+                with col3:
+                    if st.button("➕", key=f"inc_{item['id']}"):
+                        st.session_state.quantities[item["id"]] = qty + 1
+                        st.rerun()
+
+                if st.button("🛒 담기", key=f"add_{item['id']}"):
+                    if item["id"] in st.session_state.cart:
+                        st.session_state.cart[item["id"]]["qty"] += qty
+                    else:
+                        st.session_state.cart[item["id"]] = {
+                            "name": item["name"],
+                            "price": item["price"],
+                            "qty": qty,
+                            "image": item["image"],
+                        }
+                    st.success(f"{item['name']} {qty}개 담았어요!")
+                    st.rerun()
+
     # 장바구니
-    # --------------------------
     st.subheader("3️⃣ 장바구니 확인 및 제출")
+
     if not st.session_state.cart:
-        st.info("장바구니가 비어 있습니다.")
+        st.info("장바구니가 비어 있어요.")
     else:
-        total = sum(item["price"] for item in st.session_state.cart)
-        for item in st.session_state.cart:
-            st.markdown(f"- {item['emoji']} {item['name']} ({item['price']}원)")
-        st.markdown(f"**총합: {total}원** / 예산: {BUDGET}원")
+        total = 0
+        for pid, item in st.session_state.cart.items():
+            subtotal = item["price"] * item["qty"]
+            total += subtotal
 
-        if st.button("🧾 제출하고 결과 보기"):
+            col1, col2, col3 = st.columns([1, 5, 1])
+            with col1:
+                st.image(item["image"], width=50)
+            with col2:
+                st.markdown(
+                    f"**{item['name']}**  
+                    👉 **{item['qty']}개** × {item['price']}원  
+                    = 💰 **{subtotal}원**", unsafe_allow_html=True
+                )
+            with col3:
+                if st.button("❌", key=f"remove_{pid}"):
+                    del st.session_state.cart[pid]
+                    st.rerun()
+
+        st.markdown(f"### 🧾 총합: **{total}원**")
+        st.markdown(f"### 💰 잔액: **{BUDGET - total}원**")
+
+        if st.button("제출하고 결과 보기"):
             st.session_state.submitted = True
+            st.rerun()
 
-    # --------------------------
-    # 결과 화면
-    # --------------------------
     if "submitted" in st.session_state and st.session_state.submitted:
-        st.subheader("4️⃣ 결과")
-        total = sum(item["price"] for item in st.session_state.cart)
+        st.subheader("4️⃣ 결과 확인")
+        total = sum(item["price"] * item["qty"] for item in st.session_state.cart.values())
         remaining = BUDGET - total
+
         st.success(f"총 {total}원을 사용했습니다.")
-        st.info(f"잔액: {remaining}원")
-        st.markdown("---")
-        st.markdown("📝 이 결과를 보고 용돈기입장에 작성하세요.")
-        if st.button("🔁 다시 시작"):
+        st.info(f"잔액은 {remaining}원입니다.")
+
+        st.markdown("📝 결과를 보고 용돈기입장에 작성해보세요!")
+
+        if st.button("🔁 다시 시작하기"):
             for key in st.session_state.keys():
                 del st.session_state[key]
-            st.experimental_rerun()
+            st.rerun()
