@@ -103,9 +103,11 @@ else:
                 st.image(item["image"], width=50)
             with col2:
                 st.markdown(
-                    f"**{item['name']}**  
+                    f"""**{item['name']}**  
                     👉 **{item['qty']}개** × {item['price']}원  
-                    = 💰 **{subtotal}원**", unsafe_allow_html=True
+                    = 💰 **{subtotal}원**"
+                    """,
+                    unsafe_allow_html=True
                 )
             with col3:
                 if st.button("❌", key=f"remove_{pid}"):
