@@ -26,14 +26,14 @@ if "submitted" not in st.session_state:
 @st.cache_data
 def load_products():
     df = pd.read_excel("상품목록_이미지입력용.xlsx")
-    df = df.dropna(subset=["이름", "가격", "이미지"])
+    df = df.dropna(subset=["상품명", "가격", "이미지_URL"])
     products = []
     for idx, row in df.iterrows():
         products.append({
             "id": f"item_{idx}",
-            "name": row["이름"],
+            "name": row["상품명"],
             "price": int(row["가격"]),
-            "image": row["이미지"]
+            "image": row["이미지_URL"]
         })
     return products
 
