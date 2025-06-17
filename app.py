@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 # 페이지 설정
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
@@ -64,24 +66,30 @@ elif not st.session_state.submitted:
                         <h4 style='margin: 5px 0;'>{item['name']}</h4>
                         <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain; margin: 5px 0;' />
                         <p style='font-weight: bold; margin: 0;'>💰 {item['price']}원</p>
+                        <div style='display: flex; justify-content: center; align-items: center; gap: 5px;'>
+                            <form action="" method="post">
+                                <button name="dec_{item['id']}" style="width:30px">➖</button>
+                                <span style="padding: 0 10px;">{st.session_state.quantities.get(item['id'], 1)}개</span>
+                                <button name="inc_{item['id']}" style="width:30px">➕</button>
+                            </form>
+                        </div>
+                        <div style='margin-top: 10px;'>
+                            <form action="" method="post">
+                                <button name="add_{item['id']}">🛒 담기</button>
+                            </form>
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
 
                 qty = st.session_state.quantities.get(item["id"], 1)
-                col1, col2, col3 = st.columns([1, 1, 2])
-                with col1:
-                    if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
-                        st.session_state.quantities[item["id"]] = qty - 1
-                        st.rerun()
-                with col2:
-                    st.markdown(f"**{qty}개**")
-                with col3:
-                    if st.button("➕", key=f"inc_{item['id']}"):
-                        st.session_state.quantities[item["id"]] = qty + 1
-                        st.rerun()
-
+                if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
+                    st.session_state.quantities[item["id"]] = qty - 1
+                    st.rerun()
+                if st.button("➕", key=f"inc_{item['id']}"):
+                    st.session_state.quantities[item["id"]] = qty + 1
+                    st.rerun()
                 if st.button("🛒 담기", key=f"add_{item['id']}"):
                     if item["id"] in st.session_state.cart:
                         st.session_state.cart[item["id"]]["qty"] += qty
@@ -141,6 +149,7 @@ elif st.session_state.submitted:
     st.info(f"잔액은 {remaining}원입니다.")
 
     st.markdown("## 🛍️ 내가 구매한 물품")
+    result_lines = []
     for pid, item in st.session_state.cart.items():
         with st.container():
             col1, col2 = st.columns([1, 4])
@@ -148,11 +157,37 @@ elif st.session_state.submitted:
                 if item["image"]:
                     st.image(item["image"], width=70)
             with col2:
-                st.markdown(f"**{item['name']}** - {item['qty']}개 / 개당 {item['price']}원")
+                line = f"{item['name']} - {item['qty']}개 / 개당 {item['price']}원"
+                st.markdown(f"**{line}**")
+                result_lines.append(line)
 
     st.markdown("---")
     st.markdown("### ✏️ 구매한 이유를 적어보세요:")
     reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
-    st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
 
+    # 이미지 생성 및 다운로드
+    img = Image.new("RGB", (600, 400 + 20 * len(result_lines)), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    draw.text((20, 20), f"🛍️ 미션: {st.session_state.mission}", fill=(0, 0, 0))
+    draw.text((20, 60), f"총 사용 금액: {total}원", fill=(0, 0, 0))
+    draw.text((20, 90), f"잔액: {remaining}원", fill=(0, 0, 0))
+    draw.text((20, 130), "구매한 물품:", fill=(0, 0, 0))
+
+    y_offset = 160
+    for line in result_lines:
+        draw.text((40, y_offset), f"- {line}", fill=(0, 0, 0))
+        y_offset += 20
+
+    img_io = BytesIO()
+    img.save(img_io, format='PNG')
+    img_io.seek(0)
+
+    st.download_button(
+        label="📥 이미지로 저장하기",
+        data=img_io,
+        file_name="shopping_result.png",
+        mime="image/png"
+    )
+
+    st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
     st.warning("이전으로 돌아갈 수 없습니다. 다시 시작하려면 페이지를 새로고침 해주세요.")
