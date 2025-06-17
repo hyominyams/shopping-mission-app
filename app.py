@@ -22,16 +22,17 @@ if "submitted" not in st.session_state:
 missions = {
     "카레라이스 만들기 🍛": "카레에 필요한 재료를 선택해보세요!",
     "해외여행 준비 ✈️": "여행 가기 전 필요한 물건을 준비하세요!",
-    "소풍 도시락 준비 🎒": "소풍에 가져갈 도시락과 준비물을 선택하세요!"
+    "소풍 도시락 준비 👜": "소풍에 가져갈 도시락과 준비물을 선택하세요!"
 }
 
-if not st.session_state.mission:
+if not st.session_state.mission and not st.session_state.submitted:
     st.subheader("1️⃣ 미션을 선택하세요")
     mission_choice = st.radio("미션 선택:", list(missions.keys()))
     if st.button("미션 시작하기"):
         st.session_state.mission = mission_choice
         st.rerun()
-else:
+
+elif not st.session_state.submitted:
     st.subheader(f"🎯 미션: {st.session_state.mission}")
     st.caption(missions[st.session_state.mission])
 
@@ -57,10 +58,16 @@ else:
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
-                st.markdown(f"### {item['name']}")
-                if item["image"]:
-                    st.image(item["image"], width=100)
-                st.markdown(f"💰 **{item['price']}원**", unsafe_allow_html=True)
+                st.markdown(
+                    f"""
+                    <div style='height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center;'>
+                        <h4 style='margin: 5px 0;'>{item['name']}</h4>
+                        <img src='{item['image']}' width='100' style='margin: 5px 0;' />
+                        <p style='font-weight: bold; margin: 0;'>💰 {item['price']}원</p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
                 qty = st.session_state.quantities.get(item["id"], 1)
                 col1, col2, col3 = st.columns([1, 1, 2])
@@ -83,7 +90,7 @@ else:
                             "name": item["name"],
                             "price": item["price"],
                             "qty": qty,
-                            "image": item["image"],
+                            "image": item["image"]
                         }
                     st.success(f"{item['name']} {qty}개 담았습니다!")
                     st.rerun()
@@ -117,24 +124,36 @@ else:
                     del st.session_state.cart[pid]
                     st.rerun()
 
-        st.markdown(f"### 🧾 총합: **{total} 원**")
+        st.markdown(f"### 📟 총합: **{total} 원**")
         st.markdown(f"### 💰 잔액: **{BUDGET - total} 원**")
 
         if st.button("제출하고 결과 보기"):
             st.session_state.submitted = True
             st.rerun()
 
-    # 결과 확인
-    if st.session_state.submitted:
-        st.subheader("4️⃣ 결과 확인")
-        total = sum(item["price"] * item["qty"] for item in st.session_state.cart.values())
-        remaining = BUDGET - total
+# 결과 확인 페이지
+elif st.session_state.submitted:
+    st.subheader("4️⃣ 결과 확인")
+    total = sum(item["price"] * item["qty"] for item in st.session_state.cart.values())
+    remaining = BUDGET - total
 
-        st.success(f"총 {total}원을 사용했습니다.")
-        st.info(f"잔액은 {remaining}원입니다.")
-        st.markdown("📝 결과를 보고 용돈기입장에 작성해보세요!")
+    st.success(f"총 {total}원을 사용했습니다.")
+    st.info(f"잔액은 {remaining}원입니다.")
 
-        if st.button("🔁 다시 시작하기"):
-            for key in st.session_state.keys():
-                del st.session_state[key]
-            st.rerun()
+    st.markdown("## 🛍️ 내가 구매한 물품")
+    for pid, item in st.session_state.cart.items():
+        with st.container():
+            col1, col2 = st.columns([1, 4])
+            with col1:
+                if item["image"]:
+                    st.image(item["image"], width=70)
+            with col2:
+                st.markdown(f"**{item['name']}** - {item['qty']}개 / 개당 {item['price']}원")
+
+    st.markdown("---")
+    st.markdown("### ✏️ 구매한 이유를 적어보세요:")
+    reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
+    st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
+
+    # 다시 시작 버튼은 없음 (되돌릴 수 없음)
+    st.warning("이전으로 돌아갈 수 없습니다. 다시 시작하려면 페이지를 새로고침 해주세요.")
