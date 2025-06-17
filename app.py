@@ -3,6 +3,7 @@ import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
 import requests
 from io import BytesIO
+import time
 
 # 페이지 설정
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
@@ -90,7 +91,8 @@ elif not st.session_state.submitted:
                             "qty": qty,
                             "image": item["image"]
                         }
-                    st.success(f"{item['name']} {qty}개 담았어요!")
+                    with st.spinner(f"{item['name']} {qty}개 담았어요!"):
+                        time.sleep(2)
                     st.rerun()
 
     # 장바구니 확인
