@@ -61,26 +61,37 @@ elif not st.session_state.submitted:
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
-                st.markdown(
-                    f"""
-                    <div style='height: 320px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; padding: 10px;'>
-                        <h4 style='margin: 5px 0;'>{item['name']}</h4>
-                        <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain; margin: 5px 0;' />
-                        <p style='font-weight: bold; margin: 0;'>💰 {item['price']}원</p>
-                        <div style='display: flex; justify-content: center; gap: 10px;'>
-                            <form action="" method="post">
-                                <button name="dec_{item['id']}" type="submit">➖</button>
-                                <span>{st.session_state.quantities.get(item['id'], 1)}</span>
-                                <button name="inc_{item['id']}" type="submit">➕</button>
-                            </form>
-                        </div>
-                        <form action="" method="post">
-                            <button name="add_{item['id']}" type="submit">🛒 담기</button>
-                        </form>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"### {item['name']}")
+                if item["image"]:
+                    st.image(item["image"], width=100)
+                st.markdown(f"💰 **{item['price']}원**")
+
+                qty = st.session_state.quantities.get(item["id"], 1)
+
+                col1, col2, col3 = st.columns([1, 1, 1])
+                with col1:
+                    if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
+                        st.session_state.quantities[item["id"]] = qty - 1
+                        st.rerun()
+                with col2:
+                    st.markdown(f"**{qty}개**", unsafe_allow_html=True)
+                with col3:
+                    if st.button("➕", key=f"inc_{item['id']}"):
+                        st.session_state.quantities[item["id"]] = qty + 1
+                        st.rerun()
+
+                if st.button("🛒 담기", key=f"add_{item['id']}"):
+                    if item["id"] in st.session_state.cart:
+                        st.session_state.cart[item["id"]]["qty"] += qty
+                    else:
+                        st.session_state.cart[item["id"]] = {
+                            "name": item["name"],
+                            "price": item["price"],
+                            "qty": qty,
+                            "image": item["image"]
+                        }
+                    st.success(f"{item['name']} {qty}개 담았어요!")
+                    st.rerun()
 
     # 장바구니 확인
     st.subheader("3️⃣ 장바구니 확인 및 제출")
@@ -98,14 +109,8 @@ elif not st.session_state.submitted:
                 if item["image"]:
                     st.image(item["image"], width=50)
             with col2:
-                st.markdown(
-                    f"""
-                    **{item['name']}**  
-                    👉 **{item['qty']}개** × {item['price']}원  
-                    = 💰 **{subtotal}원**
-                    """,
-                    unsafe_allow_html=True
-                )
+                st.markdown(f"**{item['name']}**  ")
+                st.markdown(f"👉 **{item['qty']}개** × {item['price']}원  = 💰 **{subtotal}원**")
             with col3:
                 if st.button("❌", key=f"remove_{pid}"):
                     del st.session_state.cart[pid]
