@@ -62,21 +62,24 @@ elif not st.session_state.submitted:
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
-                st.markdown("<div style='height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;'>", unsafe_allow_html=True)
-                st.markdown(f"<div style='text-align: center;'><strong>{item['name']}</strong></div>", unsafe_allow_html=True)
-                if item["image"]:
-                    st.image(item["image"], width=100)
-                st.markdown(f"💰 <strong>{item['price']}원</strong>", unsafe_allow_html=True)
+                st.markdown("""
+                    <div style='height: 250px; display: flex; flex-direction: column; justify-content: space-between; align-items: center;'>
+                        <div style='text-align: center; font-weight: bold;'>{name}</div>
+                        <div style='margin: 5px 0;'>
+                            <img src='{image}' style='width: 100px; height: 100px; object-fit: contain; display: block; margin: 0 auto;'>
+                        </div>
+                        <div style='text-align: center; font-size: 16px;'>💰 <strong>{price}원</strong></div>
+                    </div>
+                """.format(name=item['name'], image=item['image'], price=item['price']), unsafe_allow_html=True)
 
                 qty = st.session_state.quantities.get(item["id"], 1)
-
                 col1, col2, col3 = st.columns([1, 1, 1])
                 with col1:
                     if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
                         st.session_state.quantities[item["id"]] = qty - 1
                         st.rerun()
                 with col2:
-                    st.markdown(f"**{qty}개**", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align: center;'>{qty}개</div>", unsafe_allow_html=True)
                 with col3:
                     if st.button("➕", key=f"inc_{item['id']}"):
                         st.session_state.quantities[item["id"]] = qty + 1
@@ -95,7 +98,6 @@ elif not st.session_state.submitted:
                     with st.spinner(f"{item['name']} {qty}개 담았어요!"):
                         time.sleep(2)
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
 
     # 장바구니 확인
     st.subheader("3️⃣ 장바구니 확인 및 제출")
