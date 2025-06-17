@@ -156,7 +156,7 @@ elif st.session_state.submitted:
         font = ImageFont.truetype("NanumHumanRegular.ttf", 20)
         item_height = 130
         width = 600
-        height = item_height * (len(st.session_state.cart) + 3)
+        height = item_height * (len(st.session_state.cart) + 4)
         canvas = Image.new("RGB", (width, height), "white")
         draw = ImageDraw.Draw(canvas)
 
@@ -176,6 +176,8 @@ elif st.session_state.submitted:
         y_offset = len(st.session_state.cart) * item_height
         draw.text((10, y_offset + 10), f"총 사용 금액: {total}원", fill="blue", font=font)
         draw.text((10, y_offset + 50), f"잔액: {remaining}원", fill="green", font=font)
+        if reason:
+            draw.text((10, y_offset + 90), f"이유: {reason}", fill="black", font=font)
 
         output = BytesIO()
         canvas.save(output, format="PNG")
