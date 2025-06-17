@@ -63,40 +63,24 @@ elif not st.session_state.submitted:
             with st.container(border=True):
                 st.markdown(
                     f"""
-                    <div style='height: 320px; display: flex; flex-direction: column; justify-content: start; align-items: center; text-align: center; padding: 10px;'>
+                    <div style='height: 320px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; padding: 10px;'>
                         <h4 style='margin: 5px 0;'>{item['name']}</h4>
                         <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain; margin: 5px 0;' />
                         <p style='font-weight: bold; margin: 0;'>💰 {item['price']}원</p>
+                        <div style='display: flex; justify-content: center; gap: 10px;'>
+                            <form action="" method="post">
+                                <button name="dec_{item['id']}" type="submit">➖</button>
+                                <span>{st.session_state.quantities.get(item['id'], 1)}</span>
+                                <button name="inc_{item['id']}" type="submit">➕</button>
+                            </form>
+                        </div>
+                        <form action="" method="post">
+                            <button name="add_{item['id']}" type="submit">🛒 담기</button>
+                        </form>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
-
-                qty = st.session_state.quantities.get(item["id"], 1)
-                c1, c2, c3 = st.columns([1, 1, 1])
-                with c1:
-                    if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
-                        st.session_state.quantities[item["id"]] = qty - 1
-                        st.rerun()
-                with c2:
-                    st.markdown(f"<div style='text-align:center; font-weight:bold'>{qty}개</div>", unsafe_allow_html=True)
-                with c3:
-                    if st.button("➕", key=f"inc_{item['id']}"):
-                        st.session_state.quantities[item["id"]] = qty + 1
-                        st.rerun()
-
-                if st.button("🛒 담기", key=f"add_{item['id']}"):
-                    if item["id"] in st.session_state.cart:
-                        st.session_state.cart[item["id"]]["qty"] += qty
-                    else:
-                        st.session_state.cart[item["id"]] = {
-                            "name": item["name"],
-                            "price": item["price"],
-                            "qty": qty,
-                            "image": item["image"]
-                        }
-                    st.success(f"{item['name']} {qty}개 담았습니다!")
-                    st.rerun()
 
     # 장바구니 확인
     st.subheader("3️⃣ 장바구니 확인 및 제출")
@@ -158,10 +142,10 @@ elif st.session_state.submitted:
     reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
     st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
 
-    # 결과 다운로드 이미지 생성
-    if st.button("📥 결과 이미지 다운로드"):
-        font = ImageFont.load_default()
-        item_height = 120
+    # 다운로드용 이미지 생성
+    try:
+        font = ImageFont.truetype("NanumHumanRegular.ttf", 20)
+        item_height = 130
         width = 600
         height = item_height * len(st.session_state.cart)
         canvas = Image.new("RGB", (width, height), "white")
@@ -170,19 +154,26 @@ elif st.session_state.submitted:
         for i, item in enumerate(st.session_state.cart.values()):
             y_offset = i * item_height
             try:
-                response = requests.get(item["image"])
-                product_img = Image.open(BytesIO(response.content)).resize((100, 100))
+                response = requests.get(item["image"], timeout=5)
+                product_img = Image.open(BytesIO(response.content)).convert("RGBA").resize((100, 100))
                 canvas.paste(product_img, (10, y_offset + 10))
             except:
                 draw.text((10, y_offset + 40), "이미지 오류", fill="red", font=font)
 
-            draw.text((120, y_offset + 10), f"{item['name']}", fill="black", font=font)
+            draw.text((120, y_offset + 10), item["name"], fill="black", font=font)
             draw.text((120, y_offset + 40), f"가격: {item['price']}원", fill="black", font=font)
             draw.text((120, y_offset + 70), f"수량: {item['qty']}개", fill="black", font=font)
 
         output = BytesIO()
         canvas.save(output, format="PNG")
         output.seek(0)
-        st.download_button("📎 이미지 저장", data=output, file_name="장바구니_요약.png", mime="image/png")
+        st.download_button(
+            label="📥 결과 이미지 다운로드",
+            data=output,
+            file_name="장바구니_결과.png",
+            mime="image/png"
+        )
+    except Exception as e:
+        st.warning(f"이미지 저장 중 오류 발생: {e}")
 
     st.warning("이전으로 돌아갈 수 없습니다. 다시 시작하려면 페이지를 새로고침 해주세요.")
