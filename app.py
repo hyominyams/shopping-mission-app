@@ -1,20 +1,26 @@
-# 합리적 소비 장보기 미션 (Streamlit)
+# 합리적 소비 장보기 미션 (Streamlit - fixed)
 import streamlit as st
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
-import requests
+import requests, datetime, traceback
 from io import BytesIO
-import datetime, traceback
 
-# ───────────────────────── 페이지·세션 설정 ─────────────────────────
+# ───────────────────────── 공통 설정 ─────────────────────────
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
 st.title("🏍️ 합리적 소비 장보기 미션")
+BUDGET = 30_000
 
-BUDGET = 30_000   # 예산
+# safe_rerun: 버전에 따라 st.rerun / st.experimental_rerun
+def safe_rerun():
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:
+        st.experimental_rerun()
+
 if "mission" not in st.session_state:
     st.session_state.update(
-        mission=None, cart={}, quantities={}, submitted=False,
-        reason="", reason_submitted=False
+        mission=None, cart={}, quantities={},
+        submitted=False, reason="", reason_submitted=False
     )
 
 # ───────────────────────── 데이터 로드 ─────────────────────────
@@ -25,7 +31,6 @@ def load_products(path: str):
         {"id": f"item_{i}", "name": r["상품명"], "price": int(r["가격"]), "image": r["이미지_URL"]}
         for i, r in df.iterrows()
     ]
-
 products = load_products("상품목록_이미지입력용.xlsx")
 
 missions = {
@@ -40,7 +45,7 @@ if not st.session_state.mission and not st.session_state.submitted:
     mission_choice = st.radio("미션 선택:", list(missions.keys()))
     if st.button("미션 시작하기"):
         st.session_state.mission = mission_choice
-        st.experimental_rerun()
+        safe_rerun()
 
 # ───────────────────────── 2. 상품 담기 화면 ─────────────────────────
 elif not st.session_state.submitted:
@@ -48,24 +53,36 @@ elif not st.session_state.submitted:
     st.caption(missions[st.session_state.mission])
 
     st.subheader("2️⃣ 상품을 골라 담아보세요!")
+
+    FIXED_CARD_H = 300          # 📌 ① 카드 높이를 고정
     cols = st.columns(3)
 
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
-                st.markdown(f"**{item['name']}**")
-                st.image(item["image"], width=100)
-                st.markdown(f"💰 **{item['price']}원**")
 
-                # 수량 입력(NumberInput → rerun 최소화)
+                # --- 카드(상품명·이미지·가격) ---
+                card_html = f"""
+                <div style="
+                    height:{FIXED_CARD_H - 100}px;
+                    display:flex; flex-direction:column; justify-content:space-between;
+                    align-items:center; padding:6px 4px;">
+                    <div style='font-weight:bold; text-align:center; min-height:40px;'>{item['name']}</div>
+                    <img src='{item['image']}' style='width:110px; height:110px; object-fit:contain; border:1px solid #eaeaea;'>
+                    <div style='font-size:16px; text-align:center;'>💰 <strong>{item['price']}원</strong></div>
+                </div>
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
+
+                # --- 수량/담기 컨트롤 ---
                 qty_key = f"qty_{item['id']}"
                 default_qty = st.session_state.quantities.get(item["id"], 1)
                 qty = st.number_input(
-                    "수량", min_value=1, value=default_qty, step=1, key=qty_key
+                    "수량", min_value=1, value=default_qty, step=1, key=qty_key,
+                    label_visibility="collapsed"   # 라벨 숨기기
                 )
                 st.session_state.quantities[item["id"]] = qty
 
-                # 담기 버튼
                 if st.button("🛒 담기", key=f"add_{item['id']}"):
                     cart = st.session_state.cart
                     if item["id"] in cart:
@@ -89,22 +106,25 @@ elif not st.session_state.submitted:
             total += subtotal
             col1, col2, col3 = st.columns([1, 5, 1])
             with col1: st.image(it["image"], width=50)
-            with col2:
-                st.markdown(f"**{it['name']}**  \n👉 **{it['qty']}개** × {it['price']}원 = **{subtotal}원**")
+            with col2: st.markdown(
+                f"<div style='display:flex; flex-direction:column; align-items:flex-start;'>"
+                f"<span style='font-weight:600'>{it['name']}</span>"
+                f"<span>👉 {it['qty']}개 × {it['price']}원 = <strong>{subtotal}원</strong></span>"
+                "</div>", unsafe_allow_html=True
+            )
             with col3:
                 if st.button("❌", key=f"remove_{pid}"):
-                    del cart[pid]; st.experimental_rerun()
+                    del cart[pid]
+                    safe_rerun()
 
         st.markdown(f"### 🧾 총합: **{total:,} 원**")
         st.markdown(f"### 💰 잔액: **{BUDGET - total:,} 원**")
 
-        # 예산 초과 차단
         if total > BUDGET:
             st.error("예산을 초과했습니다! 장바구니를 조정해 주세요.")
-        else:
-            if st.button("제출하고 결과 보기"):
-                st.session_state.submitted = True
-                st.experimental_rerun()
+        elif st.button("제출하고 결과 보기"):
+            st.session_state.submitted = True
+            safe_rerun()
 
 # ───────────────────────── 4. 결과 확인 ─────────────────────────
 elif st.session_state.submitted:
@@ -121,17 +141,20 @@ elif st.session_state.submitted:
         with st.container():
             col1, col2 = st.columns([1, 4])
             with col1: st.image(it["image"], width=70)
-            with col2: st.markdown(
-                f"**{it['name']}** — {it['qty']}개 / 개당 {it['price']}원"
-            )
+            with col2:
+                st.markdown(
+                    f"<div style='display:flex; flex-direction:column; align-items:flex-start;'>"
+                    f"<span style='font-weight:600'>{it['name']}</span>"
+                    f"<span>{it['qty']}개 / 개당 {it['price']}원</span>"
+                    "</div>", unsafe_allow_html=True
+                )
 
-    # 구매 이유 입력
+    # 구매 이유
     st.markdown("### ✍️ 구매한 이유를 적어보세요:")
     reason = st.text_area(
         "", value=st.session_state.get("reason", ""),
         placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100
     )
-
     if st.button("구매 이유 제출"):
         st.session_state.update(reason=reason, reason_submitted=True)
         st.toast("구매 이유가 저장되었습니다.", icon="✅")
@@ -140,60 +163,64 @@ elif st.session_state.submitted:
     if st.session_state.reason_submitted:
         st.markdown("## ✅ 결과 다운로드")
         try:
-            # 기본·제목 폰트
             font_path = "NanumHumanRegular.ttf"
             font = ImageFont.truetype(font_path, 18)
             title_font = ImageFont.truetype(font_path, 30)
 
-            item_h, width = 130, 700
-            height = item_h * (len(cart) + 4)
-            canvas = Image.new("RGB", (width, height), "white")
+            ITEM_H, W = 140, 700          # 각 행 높이
+            H = ITEM_H * (len(cart) + 4)  # 전체 캔버스 높이
+            canvas = Image.new("RGB", (W, H), "white")
             draw = ImageDraw.Draw(canvas)
 
-            # ① 미션명(가운데·굵게)
+            # ① 제목(가운데)
             title = f"미션: {st.session_state.mission}"
-            bbox = draw.textbbox((0, 0), title, font=title_font)
-            draw.text(
-                ((width - (bbox[2]-bbox[0])) // 2, 20),
-                title, fill="black", font=title_font
-            )
+            tw = draw.textbbox((0,0), title, font=title_font)[2]
+            draw.text(((W - tw) // 2, 25), title, font=title_font, fill="black")
 
-            # ② 품목 정보
+            # ② 품목 정보(가운데정렬)  -----------------------------
             for idx, it in enumerate(cart.values(), start=1):
-                y = 80 + (idx-1) * item_h
-                # 이미지
+                y = 90 + (idx-1) * ITEM_H
+                # 이미지 (가운데)
                 try:
                     img = Image.open(BytesIO(requests.get(it["image"], timeout=5).content)
-                                     ).convert("RGBA").resize((100, 100))
-                    canvas.paste(img, (20, y), img)
+                                     ).convert("RGBA").resize((110, 110))
+                    canvas.paste(img, ((W-110)//2, y), img)
                 except Exception:
-                    draw.text((20, y+40), "이미지 오류", fill="red", font=font)
+                    draw.text(((W-110)//2, y+45), "이미지 오류", fill="red", font=font)
 
-                # 텍스트
-                text_y = y + 10
-                draw.text((140, text_y), f"{it['name']}", fill="black", font=font)
-                draw.text((140, text_y+35), f"수량: {it['qty']}개", fill="black", font=font)
-                draw.text((140, text_y+65), f"가격: {it['price']}원", fill="black", font=font)
+                # 품명·가격 (아래쪽 가운데)
+                text_block = f"{it['name']}  /  {it['qty']}개  /  {it['price']}원"
+                tb_w = draw.textbbox((0,0), text_block, font=font)[2]
+                draw.text(((W - tb_w)//2, y+115), text_block, font=font, fill="black")
 
-            # ③ 총액·이유
-            y_summary = 80 + len(cart) * item_h
-            draw.text((20, y_summary),     f"총 사용 금액: {total:,}원", fill="blue",  font=font)
-            draw.text((20, y_summary+35), f"잔액: {remaining:,}원",   fill="green", font=font)
-            draw.text((20, y_summary+70), f"이유: {st.session_state['reason']}", font=font, fill="black")
+            # ③ 총액·잔액·이유
+            y_sum = 90 + len(cart) * ITEM_H
+            for label, value, color in [
+                ("총 사용 금액", f"{total:,}원", "blue"),
+                ("잔액",        f"{remaining:,}원", "green")
+            ]:
+                txt = f"{label}: {value}"
+                tw = draw.textbbox((0,0), txt, font=font)[2]
+                draw.text(((W - tw)//2, y_sum), txt, font=font, fill=color)
+                y_sum += 35
+
+            reason_text = f"이유: {st.session_state['reason']}"
+            tw = draw.textbbox((0,0), reason_text, font=font)[2]
+            draw.text(((W - tw)//2, y_sum+5), reason_text, font=font, fill="black")
 
             # PNG 출력
             buf = BytesIO(); canvas.save(buf, format="PNG"); buf.seek(0)
-            today = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            file_name = f"{st.session_state.mission}_결과_{today}.png"
-
+            stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             st.download_button(
-                "📄 결과 PNG 다운로드", buf, file_name=file_name, mime="image/png"
+                "📄 결과 PNG 다운로드", buf,
+                file_name=f"{st.session_state.mission}_결과_{stamp}.png",
+                mime="image/png"
             )
         except Exception:
             st.error("이미지 생성 중 오류가 발생했습니다.")
             st.text(traceback.format_exc())
 
-    # 처음으로 버튼 (세션 초기화)
+    # 처음으로
     if st.button("🔄 처음으로"):
         st.session_state.clear()
-        st.experimental_rerun()
+        safe_rerun()
