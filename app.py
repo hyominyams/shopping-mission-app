@@ -22,7 +22,7 @@ if "submitted" not in st.session_state:
 missions = {
     "카레라이스 만들기 🍛": "카레에 필요한 재료를 선택해보세요!",
     "해외여행 준비 ✈️": "여행 가기 전 필요한 물건을 준비하세요!",
-    "소풍 도시락 준비 👜": "소풍에 가져갈 도시락과 준비물을 선택하세요!"
+    "소풍 도시락 준비 🎒": "소풍에 가져갈 도시락과 준비물을 선택하세요!"
 }
 
 if not st.session_state.mission and not st.session_state.submitted:
@@ -60,9 +60,9 @@ elif not st.session_state.submitted:
             with st.container(border=True):
                 st.markdown(
                     f"""
-                    <div style='height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; text-align: center;'>
+                    <div style='height: 320px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; text-align: center; padding: 10px;'>
                         <h4 style='margin: 5px 0;'>{item['name']}</h4>
-                        <img src='{item['image']}' width='100' style='margin: 5px 0;' />
+                        <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain; margin: 5px 0;' />
                         <p style='font-weight: bold; margin: 0;'>💰 {item['price']}원</p>
                     </div>
                     """,
@@ -124,7 +124,7 @@ elif not st.session_state.submitted:
                     del st.session_state.cart[pid]
                     st.rerun()
 
-        st.markdown(f"### 📟 총합: **{total} 원**")
+        st.markdown(f"### 🧾 총합: **{total} 원**")
         st.markdown(f"### 💰 잔액: **{BUDGET - total} 원**")
 
         if st.button("제출하고 결과 보기"):
@@ -155,5 +155,4 @@ elif st.session_state.submitted:
     reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
     st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
 
-    # 다시 시작 버튼은 없음 (되돌릴 수 없음)
     st.warning("이전으로 돌아갈 수 없습니다. 다시 시작하려면 페이지를 새로고침 해주세요.")
