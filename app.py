@@ -148,47 +148,52 @@ elif st.session_state.submitted:
             with col2:
                 st.markdown(f"**{item['name']}** - {item['qty']}개 / 개당 {item['price']}원")
 
-    st.markdown("---")
     st.markdown("### ✍️ 구매한 이유를 적어보세요:")
     reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
 
-    try:
-        font = ImageFont.truetype("NanumHumanRegular.ttf", 20)
-        item_height = 130
-        width = 600
-        height = item_height * (len(st.session_state.cart) + 4)
-        canvas = Image.new("RGB", (width, height), "white")
-        draw = ImageDraw.Draw(canvas)
+    if st.button("구매 이유 제출"):
+        st.session_state.reason = reason
+        st.session_state.reason_submitted = True
+        st.rerun()
 
-        for i, item in enumerate(st.session_state.cart.values()):
-            y_offset = i * item_height
-            try:
-                response = requests.get(item["image"], timeout=5)
-                product_img = Image.open(BytesIO(response.content)).convert("RGBA").resize((100, 100))
-                canvas.paste(product_img, (10, y_offset + 10))
-            except:
-                draw.text((10, y_offset + 40), "이미지 오류", fill="red", font=font)
+    # 결과 다운로드 페이지
+    if st.session_state.get("reason_submitted"):
+        st.markdown("## ✅ 결과 다운로드")
+        try:
+            font = ImageFont.truetype("NanumHumanRegular.ttf", 20)
+            item_height = 130
+            width = 600
+            height = item_height * (len(st.session_state.cart) + 5)
+            canvas = Image.new("RGB", (width, height), "white")
+            draw = ImageDraw.Draw(canvas)
 
-            draw.text((120, y_offset + 10), item["name"], fill="black", font=font)
-            draw.text((120, y_offset + 40), f"가격: {item['price']}원", fill="black", font=font)
-            draw.text((120, y_offset + 70), f"수량: {item['qty']}개", fill="black", font=font)
+            for i, item in enumerate(st.session_state.cart.values()):
+                y_offset = i * item_height
+                try:
+                    response = requests.get(item["image"], timeout=5)
+                    product_img = Image.open(BytesIO(response.content)).convert("RGBA").resize((100, 100))
+                    canvas.paste(product_img, (10, y_offset + 10))
+                except:
+                    draw.text((10, y_offset + 40), "이미지 오류", fill="red", font=font)
 
-        y_offset = len(st.session_state.cart) * item_height
-        draw.text((10, y_offset + 10), f"총 사용 금액: {total}원", fill="blue", font=font)
-        draw.text((10, y_offset + 50), f"잔액: {remaining}원", fill="green", font=font)
-        if reason:
-            draw.text((10, y_offset + 90), f"이유: {reason}", fill="black", font=font)
+                draw.text((120, y_offset + 10), item["name"], fill="black", font=font)
+                draw.text((120, y_offset + 40), f"가격: {item['price']}원", fill="black", font=font)
+                draw.text((120, y_offset + 70), f"수량: {item['qty']}개", fill="black", font=font)
 
-        output = BytesIO()
-        canvas.save(output, format="PNG")
-        output.seek(0)
-        st.download_button(
-            label="📅 결과 이미지 다운로드",
-            data=output,
-            file_name="장바구니_결과.png",
-            mime="image/png"
-        )
-    except Exception as e:
-        st.warning(f"이미지 저장 중 오류 발생: {e}")
+            y_offset = len(st.session_state.cart) * item_height
+            draw.text((10, y_offset + 10), f"총 사용 금액: {total}원", fill="blue", font=font)
+            draw.text((10, y_offset + 50), f"잔액: {remaining}원", fill="green", font=font)
+            if st.session_state.get("reason"):
+                draw.text((10, y_offset + 90), f"이유: {st.session_state['reason']}", fill="black", font=font)
 
-    st.warning("이전으로 돌아갈 수 없습니다. 다시 시작하려면 페이지를 새로고침 해주세요.")
+            output = BytesIO()
+            canvas.save(output, format="PNG")
+            output.seek(0)
+            st.download_button(
+                label="📅 결과 이미지 다운로드",
+                data=output,
+                file_name="장바구니_결과.png",
+                mime="image/png"
+            )
+        except Exception as e:
+            st.warning(f"이미지 저장 중 오류 발생: {e}")
