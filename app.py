@@ -1,8 +1,8 @@
 import streamlit as st
+import pandas as pd
 
 # 페이지 설정
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
-
 st.title("🛍️ 합리적 소비 장보기 미션")
 
 # 예산 설정
@@ -15,6 +15,8 @@ if "cart" not in st.session_state:
     st.session_state.cart = {}
 if "quantities" not in st.session_state:
     st.session_state.quantities = {}
+if "submitted" not in st.session_state:
+    st.session_state.submitted = False
 
 # 미션 선택
 missions = {
@@ -33,23 +35,22 @@ else:
     st.subheader(f"🎯 미션: {st.session_state.mission}")
     st.caption(missions[st.session_state.mission])
 
-    # 상품 목록
-    products = [
-        {
-            "id": "onion_1",
-            "name": "양파 (1개)",
-            "price": 500,
-            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
-        },
-        {
-            "id": "onion_3",
-            "name": "양파 (3개)",
-            "price": 1200,
-            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
-        },
-        # 여기에 더 많은 상품 추가 가능
-    ]
+    # 상품 목록 불러오기
+    try:
+        df = pd.read_excel("상품목록_이미지입력용.xlsx")
+        products = []
+        for i, row in df.iterrows():
+            products.append({
+                "id": f"item_{i}",
+                "name": row["상품명"],
+                "price": int(row["가격"]),
+                "image": row["이미지_URL"] if pd.notna(row["이미지_URL"]) else None
+            })
+    except Exception as e:
+        st.error(f"상품 목록을 불러오는 중 오류가 발생했습니다: {e}")
+        st.stop()
 
+    # 상품 선택
     st.subheader("2️⃣ 상품을 골라 담아보세요!")
     cols = st.columns(3)
 
@@ -57,11 +58,11 @@ else:
         with cols[i % 3]:
             with st.container(border=True):
                 st.markdown(f"### {item['name']}")
-                st.image(item["image"], width=100)
+                if item["image"]:
+                    st.image(item["image"], width=100)
                 st.markdown(f"💰 **{item['price']}원**", unsafe_allow_html=True)
 
                 qty = st.session_state.quantities.get(item["id"], 1)
-
                 col1, col2, col3 = st.columns([1, 1, 2])
                 with col1:
                     if st.button("➖", key=f"dec_{item['id']}") and qty > 1:
@@ -84,10 +85,10 @@ else:
                             "qty": qty,
                             "image": item["image"],
                         }
-                    st.success(f"{item['name']} {qty}개 담았어요!")
+                    st.success(f"{item['name']} {qty}개 담았습니다!")
                     st.rerun()
 
-    # 장바구니
+    # 장바구니 확인
     st.subheader("3️⃣ 장바구니 확인 및 제출")
 
     if not st.session_state.cart:
@@ -100,12 +101,14 @@ else:
 
             col1, col2, col3 = st.columns([1, 5, 1])
             with col1:
-                st.image(item["image"], width=50)
+                if item["image"]:
+                    st.image(item["image"], width=50)
             with col2:
                 st.markdown(
-                    f"""**{item['name']}**  
+                    f"""
+                    **{item['name']}**  
                     👉 **{item['qty']}개** × {item['price']}원  
-                    = 💰 **{subtotal}원**"
+                    = 💰 **{subtotal}원**
                     """,
                     unsafe_allow_html=True
                 )
@@ -114,21 +117,21 @@ else:
                     del st.session_state.cart[pid]
                     st.rerun()
 
-        st.markdown(f"### 🧾 총합: **{total}원**")
-        st.markdown(f"### 💰 잔액: **{BUDGET - total}원**")
+        st.markdown(f"### 🧾 총합: **{total} 원**")
+        st.markdown(f"### 💰 잔액: **{BUDGET - total} 원**")
 
         if st.button("제출하고 결과 보기"):
             st.session_state.submitted = True
             st.rerun()
 
-    if "submitted" in st.session_state and st.session_state.submitted:
+    # 결과 확인
+    if st.session_state.submitted:
         st.subheader("4️⃣ 결과 확인")
         total = sum(item["price"] * item["qty"] for item in st.session_state.cart.values())
         remaining = BUDGET - total
 
         st.success(f"총 {total}원을 사용했습니다.")
         st.info(f"잔액은 {remaining}원입니다.")
-
         st.markdown("📝 결과를 보고 용돈기입장에 작성해보세요!")
 
         if st.button("🔁 다시 시작하기"):
