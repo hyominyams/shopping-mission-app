@@ -166,7 +166,12 @@ elif st.session_state.submitted:
             height = item_height * (len(st.session_state.cart) + 5)
             canvas = Image.new("RGB", (width, height), "white")
             draw = ImageDraw.Draw(canvas)
-
+            
+            # 상단 미션 제목 중앙정렬 굵게
+            mission_title = f"미션: {st.session_state.mission}"
+            title_font = ImageFont.truetype("NanumHumanRegular.ttf", 26)
+            text_width = draw.textlength(mission_title, font=title_font)
+            draw.text(((width - text_width) // 2, 10), mission_title, fill="black", font=title_font)
             for i, item in enumerate(st.session_state.cart.values()):
                 y_offset = i * item_height
                 try:
