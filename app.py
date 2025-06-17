@@ -7,7 +7,7 @@ import time
 
 # 페이지 설정
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
-st.title("🛍️ 합리적 소비 장보기 미션")
+st.title("🏍️ 합리적 소비 장보기 미션")
 
 # 예산 설정
 BUDGET = 30000
@@ -40,37 +40,40 @@ elif not st.session_state.submitted:
     st.subheader(f"🎯 미션: {st.session_state.mission}")
     st.caption(missions[st.session_state.mission])
 
-    # 상품 목록 불러오기
-    try:
-        df = pd.read_excel("상품목록_이미지입력용.xlsx")
-        products = []
-        for i, row in df.iterrows():
-            products.append({
-                "id": f"item_{i}",
-                "name": row["상품명"],
-                "price": int(row["가격"]),
-                "image": row["이미지_URL"] if pd.notna(row["이미지_URL"]) else None
-            })
-    except Exception as e:
-        st.error(f"상품 목록을 불러오는 중 오류가 발생했습니다: {e}")
-        st.stop()
+    # 상품 목록 예시
+    products = [
+        {
+            "id": "onion_1",
+            "name": "양파 (1개)",
+            "price": 500,
+            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
+        },
+        {
+            "id": "onion_3",
+            "name": "양파 (3개)",
+            "price": 1200,
+            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
+        },
+    ]
 
-    # 상품 선택
     st.subheader("2️⃣ 상품을 골라 담아보세요!")
     cols = st.columns(3)
 
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
-                st.markdown("""
+                st.markdown(
+                    f"""
                     <div style='height: 250px; display: flex; flex-direction: column; justify-content: space-between; align-items: center;'>
-                        <div style='text-align: center; font-weight: bold;'>{name}</div>
+                        <div style='text-align: center; font-weight: bold;'>{item['name']}</div>
                         <div style='margin: 5px 0;'>
-                            <img src='{image}' style='width: 100px; height: 100px; object-fit: contain; display: block; margin: 0 auto;'>
+                            <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain; display: block; margin: 0 auto;'>
                         </div>
-                        <div style='text-align: center; font-size: 16px;'>💰 <strong>{price}원</strong></div>
+                        <div style='text-align: center; font-size: 16px;'>💰 <strong>{item['price']}원</strong></div>
                     </div>
-                """.format(name=item['name'], image=item['image'], price=item['price']), unsafe_allow_html=True)
+                    """,
+                    unsafe_allow_html=True,
+                )
 
                 qty = st.session_state.quantities.get(item["id"], 1)
                 col1, col2, col3 = st.columns([1, 1, 1])
@@ -99,9 +102,7 @@ elif not st.session_state.submitted:
                         time.sleep(2)
                     st.rerun()
 
-    # 장바구니 확인
     st.subheader("3️⃣ 장바구니 확인 및 제출")
-
     if not st.session_state.cart:
         st.info("장바구니가 비어 있어요.")
     else:
@@ -109,7 +110,6 @@ elif not st.session_state.submitted:
         for pid, item in st.session_state.cart.items():
             subtotal = item["price"] * item["qty"]
             total += subtotal
-
             col1, col2, col3 = st.columns([1, 5, 1])
             with col1:
                 if item["image"]:
@@ -149,16 +149,14 @@ elif st.session_state.submitted:
                 st.markdown(f"**{item['name']}** - {item['qty']}개 / 개당 {item['price']}원")
 
     st.markdown("---")
-    st.markdown("### ✏️ 구매한 이유를 적어보세요:")
+    st.markdown("### ✍️ 구매한 이유를 적어보세요:")
     reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
-    st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
 
-    # 다운로드용 이미지 생성
     try:
         font = ImageFont.truetype("NanumHumanRegular.ttf", 20)
         item_height = 130
         width = 600
-        height = item_height * len(st.session_state.cart)
+        height = item_height * (len(st.session_state.cart) + 2)
         canvas = Image.new("RGB", (width, height), "white")
         draw = ImageDraw.Draw(canvas)
 
@@ -175,11 +173,15 @@ elif st.session_state.submitted:
             draw.text((120, y_offset + 40), f"가격: {item['price']}원", fill="black", font=font)
             draw.text((120, y_offset + 70), f"수량: {item['qty']}개", fill="black", font=font)
 
+        y_offset = len(st.session_state.cart) * item_height
+        draw.text((10, y_offset + 10), f"총 사용 금액: {total}원", fill="blue", font=font)
+        draw.text((10, y_offset + 50), f"잔액: {remaining}원", fill="green", font=font)
+
         output = BytesIO()
         canvas.save(output, format="PNG")
         output.seek(0)
         st.download_button(
-            label="📥 결과 이미지 다운로드",
+            label="📅 결과 이미지 다운로드",
             data=output,
             file_name="장바구니_결과.png",
             mime="image/png"
