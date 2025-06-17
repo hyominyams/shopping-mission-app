@@ -22,6 +22,23 @@ if "quantities" not in st.session_state:
 if "submitted" not in st.session_state:
     st.session_state.submitted = False
 
+# 상품 목록 엑셀 불러오기
+@st.cache_data
+def load_products():
+    df = pd.read_excel("상품목록_이미지입력용.xlsx")
+    df = df.dropna(subset=["이름", "가격", "이미지"])
+    products = []
+    for idx, row in df.iterrows():
+        products.append({
+            "id": f"item_{idx}",
+            "name": row["이름"],
+            "price": int(row["가격"]),
+            "image": row["이미지"]
+        })
+    return products
+
+products = load_products()
+
 # 미션 선택
 missions = {
     "카레라이스 만들기 🍛": "카레에 필요한 재료를 선택해보세요!",
@@ -40,34 +57,17 @@ elif not st.session_state.submitted:
     st.subheader(f"🎯 미션: {st.session_state.mission}")
     st.caption(missions[st.session_state.mission])
 
-    # 상품 목록 예시
-    products = [
-        {
-            "id": "onion_1",
-            "name": "양파 (1개)",
-            "price": 500,
-            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
-        },
-        {
-            "id": "onion_3",
-            "name": "양파 (3개)",
-            "price": 1200,
-            "image": "https://png.pngtree.com/png-clipart/20210311/original/pngtree-onion-png-image_6001491.jpg",
-        },
-    ]
-
     st.subheader("2️⃣ 상품을 골라 담아보세요!")
     cols = st.columns(3)
-
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
                 st.markdown(
                     f"""
-                    <div style='height: 250px; display: flex; flex-direction: column; justify-content: space-between; align-items: center;'>
+                    <div style='height: 240px; display: flex; flex-direction: column; justify-content: space-between; align-items: center;'>
                         <div style='text-align: center; font-weight: bold;'>{item['name']}</div>
                         <div style='margin: 5px 0;'>
-                            <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain; display: block; margin: 0 auto;'>
+                            <img src='{item['image']}' style='width: 100px; height: 100px; object-fit: contain;'>
                         </div>
                         <div style='text-align: center; font-size: 16px;'>💰 <strong>{item['price']}원</strong></div>
                     </div>
@@ -156,7 +156,7 @@ elif st.session_state.submitted:
         font = ImageFont.truetype("NanumHumanRegular.ttf", 20)
         item_height = 130
         width = 600
-        height = item_height * (len(st.session_state.cart) + 2)
+        height = item_height * (len(st.session_state.cart) + 3)
         canvas = Image.new("RGB", (width, height), "white")
         draw = ImageDraw.Draw(canvas)
 
