@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
+from PIL import Image, ImageDraw, ImageFont
+import requests
 from io import BytesIO
-from PIL import Image, ImageDraw
 
 # 페이지 설정
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
@@ -78,7 +79,7 @@ elif not st.session_state.submitted:
                         st.session_state.quantities[item["id"]] = qty - 1
                         st.rerun()
                 with c2:
-                    st.markdown(f"<p style='text-align: center; font-weight: bold;'>{qty}개</p>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align:center; font-weight:bold'>{qty}개</div>", unsafe_allow_html=True)
                 with c3:
                     if st.button("➕", key=f"inc_{item['id']}"):
                         st.session_state.quantities[item["id"]] = qty + 1
@@ -143,7 +144,6 @@ elif st.session_state.submitted:
     st.info(f"잔액은 {remaining}원입니다.")
 
     st.markdown("## 🛍️ 내가 구매한 물품")
-    result_lines = []
     for pid, item in st.session_state.cart.items():
         with st.container():
             col1, col2 = st.columns([1, 4])
@@ -151,37 +151,38 @@ elif st.session_state.submitted:
                 if item["image"]:
                     st.image(item["image"], width=70)
             with col2:
-                line = f"{item['name']} - {item['qty']}개 / 개당 {item['price']}원"
-                st.markdown(f"**{line}**")
-                result_lines.append(line)
+                st.markdown(f"**{item['name']}** - {item['qty']}개 / 개당 {item['price']}원")
 
     st.markdown("---")
     st.markdown("### ✏️ 구매한 이유를 적어보세요:")
     reason = st.text_area("", placeholder="왜 이 물건들을 샀나요? 어떤 기준으로 선택했나요?", height=100)
-
-    # 이미지 생성 및 다운로드
-    img = Image.new("RGB", (600, 400 + 20 * len(result_lines)), color=(255, 255, 255))
-    draw = ImageDraw.Draw(img)
-    draw.text((20, 20), f"🛍️ 미션: {st.session_state.mission}", fill=(0, 0, 0))
-    draw.text((20, 60), f"총 사용 금액: {total}원", fill=(0, 0, 0))
-    draw.text((20, 90), f"잔액: {remaining}원", fill=(0, 0, 0))
-    draw.text((20, 130), "구매한 물품:", fill=(0, 0, 0))
-
-    y_offset = 160
-    for line in result_lines:
-        draw.text((40, y_offset), f"- {line}", fill=(0, 0, 0))
-        y_offset += 20
-
-    img_io = BytesIO()
-    img.save(img_io, format='PNG')
-    img_io.seek(0)
-
-    st.download_button(
-        label="📥 이미지로 저장하기",
-        data=img_io,
-        file_name="shopping_result.png",
-        mime="image/png"
-    )
-
     st.markdown("📝 이 결과를 보고 용돈기입장에 작성해보세요!")
+
+    # 결과 다운로드 이미지 생성
+    if st.button("📥 결과 이미지 다운로드"):
+        font = ImageFont.load_default()
+        item_height = 120
+        width = 600
+        height = item_height * len(st.session_state.cart)
+        canvas = Image.new("RGB", (width, height), "white")
+        draw = ImageDraw.Draw(canvas)
+
+        for i, item in enumerate(st.session_state.cart.values()):
+            y_offset = i * item_height
+            try:
+                response = requests.get(item["image"])
+                product_img = Image.open(BytesIO(response.content)).resize((100, 100))
+                canvas.paste(product_img, (10, y_offset + 10))
+            except:
+                draw.text((10, y_offset + 40), "이미지 오류", fill="red", font=font)
+
+            draw.text((120, y_offset + 10), f"{item['name']}", fill="black", font=font)
+            draw.text((120, y_offset + 40), f"가격: {item['price']}원", fill="black", font=font)
+            draw.text((120, y_offset + 70), f"수량: {item['qty']}개", fill="black", font=font)
+
+        output = BytesIO()
+        canvas.save(output, format="PNG")
+        output.seek(0)
+        st.download_button("📎 이미지 저장", data=output, file_name="장바구니_요약.png", mime="image/png")
+
     st.warning("이전으로 돌아갈 수 없습니다. 다시 시작하려면 페이지를 새로고침 해주세요.")
