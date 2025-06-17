@@ -62,10 +62,11 @@ elif not st.session_state.submitted:
     for i, item in enumerate(products):
         with cols[i % 3]:
             with st.container(border=True):
-                st.markdown(f"### {item['name']}")
+                st.markdown("<div style='height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;'>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: center;'><strong>{item['name']}</strong></div>", unsafe_allow_html=True)
                 if item["image"]:
                     st.image(item["image"], width=100)
-                st.markdown(f"💰 **{item['price']}원**")
+                st.markdown(f"💰 <strong>{item['price']}원</strong>", unsafe_allow_html=True)
 
                 qty = st.session_state.quantities.get(item["id"], 1)
 
@@ -94,6 +95,7 @@ elif not st.session_state.submitted:
                     with st.spinner(f"{item['name']} {qty}개 담았어요!"):
                         time.sleep(2)
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
     # 장바구니 확인
     st.subheader("3️⃣ 장바구니 확인 및 제출")
