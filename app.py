@@ -5,13 +5,6 @@ import requests, datetime, traceback
 from io import BytesIO
 from collections import OrderedDict
 
-"""
-합리적 소비 장보기 미션
-────────────────────────────────────────────────────────────
-* 미션·예산·카테고리 분류 등 기존 요구사항 반영
-* 수량 위젯 딜레이/튕김 현상 개선
-* PNG 결과 다운로드 기능 포함
-"""
 
 # ───────────────────────── 공통 설정 ─────────────────────────
 st.set_page_config(page_title="합리적 소비 미션", layout="wide")
