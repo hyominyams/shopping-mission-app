@@ -24,18 +24,42 @@ if "mission" not in st.session_state:
         budget=0
     )
 
+# ───────────────────────── 카테고리 자동 분류 ─────────────────────────
+# 간단한 키워드 매칭으로 "식품코너 / 생활용품코너 / 기타 잡화코너" 구분
+FOOD_KW = [
+    "양파", "감자", "당근", "돼지고기", "소고기", "카레", "햇반", "쌀", "식용유", "마늘",
+    "김밥", "과일", "샌드위치", "생수", "주스", "컵라면", "라면", "과자", "음료",
+    "케이크", "조각", "탄산", "생일초"
+]
+LIFE_KW = [
+    "칫솔", "치약", "세면도구", "물티슈", "보조배터리", "귀마개", "슬리퍼", "우산",
+    "양말", "손세정제", "비누", "쓰레기", "비상약", "물병", "썬크림", "모기",
+    "수저", "재사용"
+]
+CATEGORY_ORDER = ["식품코너", "생활용품코너", "기타 잡화코너"]
+
+def classify(name: str) -> str:
+    for kw in FOOD_KW:
+        if kw in name:
+            return "식품코너"
+    for kw in LIFE_KW:
+        if kw in name:
+            return "생활용품코너"
+    return "기타 잡화코너"
+
 # ───────────────────────── 데이터 로드 ─────────────────────────
 @st.cache_data
 def load_products(path: str):
     df = pd.read_excel(path).dropna(subset=["상품명", "가격", "이미지_URL"])
     products = []
     for i, r in df.iterrows():
+        name = str(r["상품명"])
         products.append({
             "id": f"item_{i}",
-            "name": r["상품명"],
+            "name": name,
             "price": int(r["가격"]),
             "image": r["이미지_URL"],
-            "category": r["카테고리"] if "카테고리" in df.columns else "기타"
+            "category": classify(name)
         })
     return products
 
@@ -78,12 +102,16 @@ elif not st.session_state.submitted:
 
     FIXED_CARD_H = 300   # 카드 높이 고정
 
-    # 카테고리별로 제품 정렬
-    categories = OrderedDict()
+    # 카테고리별로 제품 정렬 (원하는 순서로 초기화)
+    categories = OrderedDict((c, []) for c in CATEGORY_ORDER)
     for p in products:
-        categories.setdefault(p["category"], []).append(p)
+        # 분류 결과가 CATEGORY_ORDER에 없다면 기타로
+        cat = p["category"] if p["category"] in CATEGORY_ORDER else "기타 잡화코너"
+        categories[cat].append(p)
 
     for cat, items in categories.items():
+        if not items:
+            continue  # 해당 카테고리에 상품이 없으면 스킵
         st.markdown(f"### 📂 {cat}")
         for idx, item in enumerate(items):
             if idx % 3 == 0:
@@ -221,7 +249,7 @@ elif st.session_state.submitted:
                     canvas.paste(img, ((W - 110) // 2, y), img)
                 except Exception:
                     draw.text(((W - 110) // 2, y + 45), "이미지 오류", fill="red", font=font)
-
+                
                 # 품명·가격 (아래쪽 가운데)
                 text_block = f"{it['name']}  /  {it['qty']}개  /  {it['price']}원"
                 tb_w = draw.textbbox((0, 0), text_block, font=font)[2]
