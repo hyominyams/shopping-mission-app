@@ -25,7 +25,6 @@ if "mission" not in st.session_state:
     )
 
 # ───────────────────────── 카테고리 자동 분류 ─────────────────────────
-# 간단한 키워드 매칭으로 "식품코너 / 생활용품코너 / 기타 잡화코너" 구분
 FOOD_KW = [
     "양파", "감자", "당근", "돼지고기", "소고기", "카레", "햇반", "쌀", "식용유", "마늘",
     "김밥", "과일", "샌드위치", "생수", "주스", "컵라면", "라면", "과자", "음료",
@@ -102,16 +101,15 @@ elif not st.session_state.submitted:
 
     FIXED_CARD_H = 300   # 카드 높이 고정
 
-    # 카테고리별로 제품 정렬 (원하는 순서로 초기화)
+    # 카테고리별로 제품 정렬
     categories = OrderedDict((c, []) for c in CATEGORY_ORDER)
     for p in products:
-        # 분류 결과가 CATEGORY_ORDER에 없다면 기타로
         cat = p["category"] if p["category"] in CATEGORY_ORDER else "기타 잡화코너"
         categories[cat].append(p)
 
     for cat, items in categories.items():
         if not items:
-            continue  # 해당 카테고리에 상품이 없으면 스킵
+            continue
         st.markdown(f"### 📂 {cat}")
         for idx, item in enumerate(items):
             if idx % 3 == 0:
@@ -132,19 +130,23 @@ elif not st.session_state.submitted:
                     """
                     st.markdown(card_html, unsafe_allow_html=True)
 
-                    # --- 수량/담기 컨트롤 ---
+                    # --- 수량/담기 컨트롤 (위젯 상태 활용) ---
                     qty_key = f"qty_{item['id']}"
-                    default_qty = st.session_state.quantities.get(item["id"], 1)
+                    if qty_key not in st.session_state:
+                        st.session_state[qty_key] = 1  # 초기화
+
                     qty = st.number_input(
-                        "수량", min_value=1, value=default_qty, step=1, key=qty_key,
+                        "수량", min_value=1, step=1, key=qty_key,
                         label_visibility="collapsed"
                     )
+
+                    # 최신 수량을 quantities dict에도 반영
                     st.session_state.quantities[item["id"]] = qty
 
                     if st.button("🛒 담기", key=f"add_{item['id']}"):
                         cart = st.session_state.cart
                         if item["id"] in cart:
-                            cart[item["id"]]["qty"] += qty
+                            cart[item["id"]]["qty"] = qty  # 선택 수량으로 덮어쓰기
                         else:
                             cart[item["id"]] = {
                                 "name": item["name"], "price": item["price"],
@@ -226,63 +228,4 @@ elif st.session_state.submitted:
         st.markdown("## ✅ 결과 다운로드")
         try:
             font_path = "NanumHumanRegular.ttf"
-            font = ImageFont.truetype(font_path, 18)
-            title_font = ImageFont.truetype(font_path, 30)
-
-            ITEM_H, W = 140, 700          # 각 행 높이
-            H = ITEM_H * (len(cart) + 4)  # 전체 캔버스 높이
-            canvas = Image.new("RGB", (W, H), "white")
-            draw = ImageDraw.Draw(canvas)
-
-            # ① 제목(가운데)
-            title = f"미션: {st.session_state.mission}"
-            tw = draw.textbbox((0, 0), title, font=title_font)[2]
-            draw.text(((W - tw) // 2, 25), title, font=title_font, fill="black")
-
-            # ② 품목 정보(가운데정렬)
-            for idx, it in enumerate(cart.values(), start=1):
-                y = 90 + (idx - 1) * ITEM_H
-                # 이미지 (가운데)
-                try:
-                    img = Image.open(BytesIO(requests.get(it["image"], timeout=5).content))\
-                        .convert("RGBA").resize((110, 110))
-                    canvas.paste(img, ((W - 110) // 2, y), img)
-                except Exception:
-                    draw.text(((W - 110) // 2, y + 45), "이미지 오류", fill="red", font=font)
-                
-                # 품명·가격 (아래쪽 가운데)
-                text_block = f"{it['name']}  /  {it['qty']}개  /  {it['price']}원"
-                tb_w = draw.textbbox((0, 0), text_block, font=font)[2]
-                draw.text(((W - tb_w) // 2, y + 115), text_block, font=font, fill="black")
-
-            # ③ 총액·잔액·이유
-            y_sum = 90 + len(cart) * ITEM_H
-            for label, value, color in [
-                ("총 사용 금액", f"{total:,}원", "blue"),
-                ("잔액", f"{remaining:,}원", "green")
-            ]:
-                txt = f"{label}: {value}"
-                tw = draw.textbbox((0, 0), txt, font=font)[2]
-                draw.text(((W - tw) // 2, y_sum), txt, font=font, fill=color)
-                y_sum += 35
-
-            reason_text = f"이유: {st.session_state['reason']}"
-            tw = draw.textbbox((0, 0), reason_text, font=font)[2]
-            draw.text(((W - tw) // 2, y_sum + 5), reason_text, font=font, fill="black")
-
-            # PNG 출력
-            buf = BytesIO(); canvas.save(buf, format="PNG"); buf.seek(0)
-            stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            st.download_button(
-                "📄 결과 PNG 다운로드", buf,
-                file_name=f"{st.session_state.mission}_결과_{stamp}.png",
-                mime="image/png"
-            )
-        except Exception:
-            st.error("이미지 생성 중 오류가 발생했습니다.")
-            st.text(traceback.format_exc())
-
-    # 처음으로
-    if st.button("🔄 처음으로"):
-        st.session_state.clear()
-        safe_rerun()
+            font = ImageFont.truetype(font
